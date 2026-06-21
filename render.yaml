@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: telegram-bot-api
+    env: python
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: DATABASE_URL
+        scope: run
+        sync: false
+      - key: BOT_TOKEN
+        scope: run
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        scope: run
+        sync: false
+      - key: ENCRYPTION_KEY
+        scope: run
+        sync: false
+      - key: WEB_URL
+        scope: run
+        sync: false
+      - key: SQL_ECHO
+        value: "false"
