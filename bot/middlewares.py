@@ -17,10 +17,7 @@ class ApprovalMiddleware(BaseMiddleware):
         user_id = None
         username = None
         
-        if isinstance(event, Message):
-            user_id = event.from_user.id
-            username = event.from_user.username
-        elif isinstance(event, CallbackQuery):
+        if hasattr(event, "from_user") and event.from_user is not None:
             user_id = event.from_user.id
             username = event.from_user.username
 
@@ -33,16 +30,24 @@ class ApprovalMiddleware(BaseMiddleware):
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
 
-            # Auto-approve the admin to ease deployment and testing bootstrap
-            if not user and user_id == settings.ADMIN_TELEGRAM_ID:
-                user = User(
-                    telegram_id=user_id,
-                    telegram_username=username,
-                    is_approved=True
-                )
-                session.add(user)
-                await session.commit()
-                await session.refresh(user)
+            # Auto-approve the configured admin to ease deployment and testing bootstrap.
+            # This also covers the case where an earlier unapproved user row already exists.
+            if user_id == settings.ADMIN_TELEGRAM_ID:
+                if not user:
+                    user = User(
+                        telegram_id=user_id,
+                        telegram_username=username,
+                        is_approved=True
+                    )
+                    session.add(user)
+                elif not user.is_approved:
+                    user.is_approved = True
+                    if username:
+                        user.telegram_username = username
+
+                if user is not None:
+                    await session.commit()
+                    await session.refresh(user)
 
             # If user does not exist or isn't approved, block execution
             if not user or not user.is_approved:
